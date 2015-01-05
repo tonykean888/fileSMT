@@ -18,6 +18,7 @@
 		$Y = $Y+543; // เปลี่ยน ค.ศ. เป็น พ.ศ.
 		return $d."/".$m."/".$Y;
 	}
+	
 
 	function DCDate($datetime) {
 		list($d,$m,$Y) = split('/',$datetime); // แยกวันเป็น ปี เดือน วัน
@@ -25,23 +26,7 @@
 		return $d."/".$m."/".$Y;
 	}
 
-	
-	function get_select_month_th($s_name, $s_default){
-		$a_month_th = array("- Please Select -","มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม");
-		$s_selection = "<select name='$s_name' id='$s_name' class='cSelection'>";
-		//$s_selection .= "<option value=''>-- Please Select --</option>"; 
-		foreach ($a_month_th as $key => $value){
-			$str_selected = ($key == $s_default ? "SELECTED" : "");
-			$s_selection .= "<option value='".$key."'$str_selected>".$value."</option>";	
-		}
-		$s_selection .= "</select>";
-		return $s_selection;
-		
-	}
-	
-	
-
-	
+	$a_month_th = array("เดือน", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม");
 	function debug( $msg, $b_stop = false ){
 		echo "DEBUG: ===[$msg]===<br>";
 		if( $b_stop ) { die(); }
@@ -51,12 +36,46 @@
 		return (int)$y + 543;
 	}
 	
-	function get_DC( $y ){
-		return (int)$y - 543;
-	}
-	
 	function oci_escape_string($string) {
 	  return str_replace(array('"', "'", '\\'), array('\\"', "''", '\\\\'), $string);
+	}
+
+	$DEFAULT_PERC = 15;
+	function get_compare_per( $ori_val, $new_val, $perc, $s_type = "RENT" ){
+		global $DEFAULT_PERC;
+		$s_type = ( $s_type == "RENT" ? "ค่าเช่า" : "ค่าบริการ" );
+		$s_desc = "";
+		$s_bg_color = "";
+		
+		$str = "(";
+		
+		// if not set percentage -> set detfault
+		if( $perc == "" ) { $perc = $DEFAULT_PERC; $str .= "Default "; }
+		$str .= $perc."% = ";
+		
+		$exp_vale = $ori_val + ( $ori_val * ( $perc / 100 ) );
+		$str .= number_format( $exp_vale, 2 )." บาท / ปี) จำนวนเงินใหม่ = ";
+		$new_perc = ( ( $new_val - $ori_val )/ $ori_val ) * 100;
+		
+		$str = "";
+		$tx_new_perc = number_format( $new_perc, 2 );
+		if( $new_val == $ori_val ) {
+			$str .= "<b style='color:#000000'>$s_type เท่าเดิม</b>";
+		} else {
+			if( $new_val > $ori_val ){
+				if( $new_perc > $perc ){
+					$str .= "<b style='color:#ff0000'>$s_type เพิ่มขึ้น $tx_new_perc%</b>";
+		} else {
+					$str .= "<b style='color:#000000'>$s_type เพิ่มขึ้น $tx_new_perc%</b>";
+				}
+		} else {
+					$str .= "<b style='color:#00CC33'>$s_type ลดลง $tx_new_perc%</b>";
+			}
+			//$str .= "<b style='color:#00CC33'>$new_perc%</b>";
+		}
+		//debug( $exp_vale );
+		
+		echo $str;
 	}
 
 	function get_next_id( $id_field, $table ){
@@ -74,7 +93,7 @@
 	}
 	
 	function get_number_list( $s_name, $s_default, $i_start, $i_end ){
-		$s_selection = "<select name='$s_name' id='$s_name' class='cSelection' style='width:60px;'>";
+		$s_selection = "<select name='$s_name' id='$s_name' class='cSelection' style='width:50px;'>";
 		for( $i = $i_start; $i <= $i_end; $i++ ){
 			$str_selected = ( $i == $s_default ? " SELECTED" : ""  );
 			$s_selection .= "<option value='$i'$str_selected>$i</option>";
@@ -127,8 +146,27 @@
 	}
 
 
-    function get_contract_status( $s_default, $b_all = true ){
+         	function get_contract_status( $s_default, $b_all = true ){
 		return get_config_selection( "CONT_TYPE", $s_default, $b_all );
+	}
+	
+	/*======================================================================
+	 * function: get_electric
+	 * parameter: s_default = detfaul selected value
+	 * process: read data from database (configable table)
+	 * return: string elctric selection
+	 =======================================================================*/
+	 
+	 function get_elec_region( $s_default, $b_all = true ){
+		return get_config_selection( "E_REGION", $s_default, $b_all );
+	}
+	
+	function get_selection( $s_name,$s_key,$s_default, $b_all = true ){
+		return get_config_selection_name( $s_name,$s_key, $s_default, $b_all );
+	}
+	
+	function get_elec_domain_type( $s_default, $b_all = true ){
+		return get_config_selection( "E_DOMAIN_TYPE", $s_default, $b_all );
 	}
 	
 	/*======================================================================
@@ -185,10 +223,10 @@
 	 * process: read data from database (configable table)
 	 * return: string electricity regional selection
 	 =======================================================================*/
-	function get_elec_region( $s_default, $b_all = true ){
+	/*function get_elec_region( $s_default, $b_all = true ){
 		if( $s_default == "" ) { $s_default = ""; }
 		return get_config_selection( "E_REGION", $s_default, $b_all );
-	}
+	}*/
 
 	function get_elec_region_value( $s_default){
 		return get_config( "E_REGION", $s_default);
@@ -235,11 +273,11 @@
 	 =======================================================================*/
 	function get_meter_type ( $s_default, $b_all = true ){
 		if( $s_default == "" ) { $s_default = ""; }
-		return get_config_selection( "METER_TYPE", $s_default, $b_all );
+		return get_config_selection( "ELEC_METER_TYPE", $s_default, $b_all );
 	}
 
 	function get_meter_type_value( $s_default){
-		return get_config( "METER_TYPE", $s_default);
+		return get_config( "ELEC_METER_TYPE", $s_default);
 	}
 
 
@@ -251,11 +289,11 @@
 	 =======================================================================*/
 	function get_meter_owner ( $s_default, $b_all = true ){
 		if( $s_default == "" ) { $s_default = ""; }
-		return get_config_selection( "ELEC_OWNER", $s_default, $b_all );
+		return get_config_selection( "ELEC_METER_OWNER", $s_default, $b_all );
 	}
 
 	function get_meter_owner_value( $s_default){
-		return get_config( "ELEC_OWNER", $s_default);
+		return get_config( "ELEC_METER_OWNER", $s_default);
 	}
 	/*======================================================================
 	 * function: get_meter_size 
@@ -279,11 +317,11 @@
 	 =======================================================================*/
 	function get_meter_prom ( $s_default, $b_all = true ){
 		if( $s_default == "" ) { $s_default = ""; }
-		return get_config_selection( "PROMOTION", $s_default, $b_all );
+		return get_config_selection( "METER_PROMOTION", $s_default, $b_all );
 	}
 
 	function get_meter_promo_value( $s_default){
-		return get_config( "PROMOTION", $s_default);
+		return get_config( "METER_PROMOTION", $s_default);
 	}
 	/*======================================================================
 	 * function: get_meter_insr  
@@ -529,6 +567,28 @@
 		return $s_selection;
 	}
 	
+	function get_config_selection_name( $s_name,$c_name, $s_default, $b_all = true, $i_index = "" ){
+		global $SMTConn;
+		
+		$strSQL = " SELECT * FROM SMT_TBL_MAS_CONFIG WHERE CONFIG_NAME = '$c_name' ORDER BY CONFIG_SEQN ";
+		$SMTConn->runQuery( $strSQL );
+
+		$s_selection = "<select name='$s_name' id='$s_name' onkeypress='return check_enter(event)' class='cSelection'>";
+		if( $b_all ) { 
+			$s_selection .= "<option value=''>ทั้งหมด</option>"; 
+		} else {
+			$s_selection .= "<option value=''>-- Please Select --</option>"; 
+		}
+
+		while( $row = $SMTConn->fetch_assoc() ){
+			$str_selected = ( $row["CONFIG_KEY"] == $s_default ? " SELECTED" : ""  );
+			$s_selection .= "<option value='".$row["CONFIG_KEY"]."'$str_selected>".$row["CONFIG_VALUE"]."</option>";
+		}
+		
+		$s_selection .= "</select>";
+		return $s_selection;
+	}
+	
 	function get_config($c_name,$s_default){
 		global $SMTConn;
 
@@ -542,6 +602,7 @@
 		
 		return $s_selection;
 	}
+	
 
 	function get_district_selection( $s_name, $s_default, $amphoe_id, $b_all = true ){
 		global $SMTConn;
@@ -844,7 +905,7 @@
 		global $SMTConn;
 		
 		$s_Ex = ( $style == 1 ? " AND CONFIG_KEY != 'BG' " : "" );
-	 	$strSQL = " SELECT * FROM SMT_TBL_MAS_CONFIG WHERE CONFIG_NAME = 'PAYM_MTHD' $s_Ex ORDER BY CONFIG_SEQN ";
+		$strSQL = " SELECT * FROM SMT_TBL_MAS_CONFIG WHERE CONFIG_NAME = 'PAYM_MTHD' $s_Ex ORDER BY CONFIG_SEQN ";
 		$SMTConn->runQuery( $strSQL );
 		
 		$s_radio = "";
@@ -1041,6 +1102,8 @@
 	function get_electric_owner( $s_default, $b_all, $style = 1 ){
 		//return get_config_selection( "ELEC_OWNER", $s_default, $b_all );
 		global $SMTConn;
+		
+		
 		$s_EX = ( $style == 2 ? " AND CONFIG_KEY != 'LL' " : "" );
 		$strSQL = " SELECT * FROM SMT_TBL_MAS_CONFIG WHERE CONFIG_NAME = 'ELEC_OWNER' $s_EX ORDER BY CONFIG_SEQN ";
 		$SMTConn->runQuery( $strSQL );
@@ -1076,18 +1139,6 @@
 
 		$s_selection .= "</select>";
 		return $s_selection;
-	}
-	
-	function get_vat_value(){
-		global $SMTConn;
-
-		$strSQL = " SELECT CONFIG_VALUE FROM SMT_TBL_MAS_CONFIG WHERE CONFIG_NAME = 'VAT_RATE' ";
-		$SMTConn->runQuery( $strSQL );
-
-		while($row = $SMTConn->fetch_assoc()) 
-		$vat_rate = $row['CONFIG_VALUE'];
-		
-		return $vat_rate;		
 	}
 
         function datediff($interval, $datefrom, $dateto, $using_timestamps = false) {
